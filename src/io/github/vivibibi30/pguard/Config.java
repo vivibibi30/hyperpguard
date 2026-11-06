@@ -6,9 +6,9 @@ import android.content.SharedPreferences;
 /**
  * 配置。
  *
- * UI 侧通过普通 SharedPreferences 读写；hook 侧在新 API 下无法直接读应用私有目录，
- * 因此使用各规则的默认值（与 UI 的默认值一致）。细粒度开关由「应用是否在作用域内」
- * 加默认规则共同决定。
+ * UI 侧优先通过 XposedService#getRemotePreferences 读写；服务未连接时回退到本地
+ * SharedPreferences。hook 侧通过 XposedInterface#getRemotePreferences 读取同一组
+ * 远程偏好；读取失败时退回各规则的默认值（与 UI 默认值一致），不会静默放行。
  */
 public final class Config {
 
@@ -78,7 +78,21 @@ public final class Config {
     public static final String K_AD_MARKET = "block_ad_market";
     public static final String K_AD_XMSF = "block_ad_xmsf";
 
+    /**
+     * hook 侧读取的共享偏好。由 HookEntry 在目标进程里通过
+     * XposedInterface#getRemotePreferences(group) 绑定；未绑定时退回默认值。
+     */
+    private static volatile SharedPreferences hookPrefs;
+
     private Config() {
+    }
+
+    public static void bindHookPrefs(SharedPreferences prefs) {
+        hookPrefs = prefs;
+    }
+
+    public static boolean hasHookPrefs() {
+        return hookPrefs != null;
     }
 
     /* ---------------- UI 侧 ---------------- */
@@ -94,14 +108,24 @@ public final class Config {
     /* ---------------- Hook 侧 ---------------- */
 
     public static boolean masterOn() {
-        return true;
+        return get(K_MASTER, true);
     }
 
     public static boolean on(String key, boolean fallback) {
-        return fallback;
+        return get(key, fallback);
     }
 
     public static boolean strict() {
-        return false;
+        return get(K_STRICT, false);
+    }
+
+    private static boolean get(String key, boolean fallback) {
+        SharedPreferences prefs = hookPrefs;
+        if (prefs == null) return fallback;
+        try {
+            return prefs.getBoolean(key, fallback);
+        } catch (Throwable ignored) {
+            return fallback;
+        }
     }
 }

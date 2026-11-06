@@ -1,5 +1,6 @@
 package io.github.vivibibi30.pguard;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import java.lang.reflect.Constructor;
@@ -51,6 +52,7 @@ public class HookEntry extends XposedModule {
     @Override
     public void onModuleLoaded(XposedModuleInterface.ModuleLoadedParam param) {
         log("module loaded: " + param.getProcessName());
+        bindRemotePrefs();
     }
 
     @Override
@@ -58,6 +60,7 @@ public class HookEntry extends XposedModule {
         final String pkg = param.getPackageName();
         final ClassLoader cl = param.getClassLoader();
         if (pkg == null || cl == null) return;
+        bindRemotePrefs();
         if (!masterOn()) return;
 
         try {
@@ -623,13 +626,69 @@ public class HookEntry extends XposedModule {
         return h.equals(s) || h.endsWith("." + s);
     }
 
+    /**
+     * 只把合法的本机/私网 IP 字面量视为“本地”。
+     * 旧实现用 host.startsWith("10.") 之类的字符串前缀判断，
+     * 会让 10.evil.com / 192.168.evil.com / 172.16.evil.com / anything.local
+     * 在 strictAll 模式下被误放行。
+     */
     private static boolean isLocal(String h) {
-        return h.equals("localhost") || h.equals("127.0.0.1") || h.equals("::1")
-                || h.startsWith("127.") || h.startsWith("192.168.")
-                || h.startsWith("10.") || h.startsWith("172.16.") || h.endsWith(".local");
+        if (h == null) return false;
+        String host = h.trim().toLowerCase();
+        if (host.endsWith(".")) host = host.substring(0, host.length() - 1);
+        if (host.startsWith("[") && host.endsWith("]")) {
+            host = host.substring(1, host.length() - 1);
+        }
+        int zone = host.indexOf('%'); // IPv6 zone id, e.g. fe80::1%wlan0
+        if (zone >= 0) host = host.substring(0, zone);
+        if (host.equals("localhost")) return true;
+        if (host.startsWith("::ffff:")) return isLocal(host.substring(7));
+
+        if (host.indexOf(':') < 0) {
+            String[] parts = host.split("\\.");
+            if (parts.length != 4) return false;
+            try {
+                int a = Integer.parseInt(parts[0]);
+                int b = Integer.parseInt(parts[1]);
+                int c = Integer.parseInt(parts[2]);
+                int d = Integer.parseInt(parts[3]);
+                if (a < 0 || a > 255 || b < 0 || b > 255
+                        || c < 0 || c > 255 || d < 0 || d > 255) {
+                    return false;
+                }
+                return a == 127 || a == 10
+                        || (a == 192 && b == 168)
+                        || (a == 172 && b >= 16 && b <= 31)
+                        || (a == 169 && b == 254);
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+
+        return host.equals("::1") || host.startsWith("fe80:")
+                || host.startsWith("fc") || host.startsWith("fd");
     }
 
     /* ---------------- 工具 ---------------- */
+
+    /**
+     * 读取 UI 侧通过 LSPosed 暴露的远程偏好。每个目标进程绑定一次；
+     * 失败时保持 null，Config 会退回默认值（与旧行为一致，不会造成新的放行）。
+     */
+    private void bindRemotePrefs() {
+        if (Config.hasHookPrefs()) return;
+        try {
+            SharedPreferences prefs = getRemotePreferences(Config.PREFS);
+            if (prefs != null) {
+                Config.bindHookPrefs(prefs);
+                log("remote prefs bound");
+            } else {
+                log("remote prefs unavailable, using defaults");
+            }
+        } catch (Throwable t) {
+            log("remote prefs fail: " + t);
+        }
+    }
 
     private boolean masterOn() {
         return Config.masterOn();

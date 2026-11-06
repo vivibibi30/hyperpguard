@@ -252,7 +252,7 @@ CI：`.github/workflows/build.yml` 在每次推送到 `main` 时自动构建，�
 | 文件 | 职责 |
 |---|---|
 | `HookEntry.java` | 入口，继承 `XposedModule`，在 `onPackageReady` 按包名分发 |
-| `Config.java` | 开关常量；hook 侧当前按默认值执行（细粒度开关待接 RemotePreferences） |
+| `Config.java` | 开关常量；hook 侧通过 `XposedInterface#getRemotePreferences` 读取 UI 写入的远程偏好，读不到时退回默认值 |
 | `MainActivity.java` | 分组开关面板、作用域联动、重启、日志查看与分享 |
 | `assets/DISCLAIMER.txt` | 免责声明，应用内可查看 |
 

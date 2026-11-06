@@ -6,6 +6,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteDatabase;
 
 import java.util.Collections;
@@ -216,7 +217,7 @@ public class MainActivity extends Activity {
                 c.addView(row);
             }
             root.addView(c);
-            setGroupUi(g, Config.ui(this).getBoolean(g.key, true));
+            setGroupUi(g, prefs().getBoolean(g.key, true));
         }
 
         Button disclaimer = new Button(this);
@@ -237,7 +238,10 @@ public class MainActivity extends Activity {
                 xposed = service;
                 android.util.Log.i("PrivacyGuard", "XposedService bound: "
                         + service.getFrameworkName() + " " + service.getFrameworkVersion());
-                ui.post(MainActivity.this::syncFromService);
+                ui.post(() -> {
+                    migrateLocalPrefs();
+                    syncFromService();
+                });
             }
 
             @Override
@@ -316,7 +320,7 @@ public class MainActivity extends Activity {
                     ui.post(() -> {
                         for (Group g : GROUPS) {
                             if (approved != null && approved.contains(g.pkg)) {
-                                Config.uiSet(MainActivity.this, g.key, true);
+                                setPref(g.key, true);
                             }
                         }
                         Toast.makeText(MainActivity.this,
@@ -343,7 +347,7 @@ public class MainActivity extends Activity {
         for (Group g : GROUPS) all.add(g.pkg);
         try {
             xposed.removeScope(all);
-            for (Group g : GROUPS) Config.uiSet(this, g.key, false);
+            for (Group g : GROUPS) setPref(g.key, false);
             Toast.makeText(this, "已移出全部作用域", Toast.LENGTH_SHORT).show();
             syncFromService();
         } catch (Throwable t) {
@@ -353,7 +357,7 @@ public class MainActivity extends Activity {
 
     /** LSPosed 确认后才更新开关与配置 */
     private void commitState(final Group g, final Switch sw, boolean on, String msg) {
-        Config.uiSet(this, g.key, on);
+        setPref(g.key, on);
         if (sw != null) {
             updatingSwitch = true;
             sw.setChecked(on);
@@ -420,6 +424,63 @@ public class MainActivity extends Activity {
     }
 
     /**
+     * UI 侧优先读写 LSPosed 远程偏好：hook 侧通过
+     * XposedInterface#getRemotePreferences(Config.PREFS) 读同一份配置。
+     * 服务未连接时退回本地 SharedPreferences（首次启动/框架未启用）。
+     */
+    private SharedPreferences prefs() {
+        if (xposed != null) {
+            try {
+                SharedPreferences remote = xposed.getRemotePreferences(Config.PREFS);
+                if (remote != null) return remote;
+            } catch (Throwable ignored) {
+            }
+        }
+        return Config.ui(this);
+    }
+
+    private void setPref(String key, boolean value) {
+        try {
+            prefs().edit().putBoolean(key, value).apply();
+        } catch (Throwable t) {
+            Config.uiSet(this, key, value);
+        }
+    }
+
+    /**
+     * 首次绑定服务时，把旧版本写在本地 SharedPreferences 的开关迁移到远程偏好，
+     * 避免升级后 hook 侧读不到用户已有配置而退回默认值。
+     */
+    private void migrateLocalPrefs() {
+        if (xposed == null) return;
+        try {
+            SharedPreferences remote = xposed.getRemotePreferences(Config.PREFS);
+            if (remote == null || !remote.getAll().isEmpty()) return;
+            SharedPreferences.Editor editor = remote.edit();
+            for (Map.Entry<String, ?> entry : Config.ui(this).getAll().entrySet()) {
+                Object value = entry.getValue();
+                if (value instanceof Boolean) {
+                    editor.putBoolean(entry.getKey(), (Boolean) value);
+                }
+            }
+            editor.apply();
+        } catch (Throwable t) {
+            android.util.Log.w("PrivacyGuard", "migrate prefs fail", t);
+        }
+    }
+
+    /** 服务绑定/回到前台时，把子开关也刷新为远程偏好的真实值。 */
+    private void refreshChildSwitches() {
+        for (Group g : GROUPS) {
+            List<Switch> list = childSwitches.get(g.pkg);
+            if (list == null) continue;
+            for (int i = 0; i < list.size() && i < g.items.length; i++) {
+                list.get(i).setChecked(prefs().getBoolean(g.items[i].key, g.items[i].def));
+            }
+        }
+    }
+
+    /**
      * 从 LSPosed 读真实作用域，刷新所有组开关与配置。
      * 这是「开关状态跟着框架走」的唯一入口：onServiceBind / onResume 都调它。
      */
@@ -428,13 +489,14 @@ public class MainActivity extends Activity {
         for (Group g : GROUPS) {
             boolean on;
             if (scope == null) {
-                on = Config.ui(this).getBoolean(g.key, true);
+                on = prefs().getBoolean(g.key, true);
             } else {
                 on = scope.contains(g.pkg);
-                Config.uiSet(this, g.key, on);
+                setPref(g.key, on);
             }
             setGroupUi(g, on);
         }
+        refreshChildSwitches();
         if (scope != null && scope.isEmpty() && !autoRequested) {
             // 首次安装且框架里还没有任何作用域：只自动请求一次，之后交给用户
             autoRequested = true;
@@ -457,7 +519,7 @@ public class MainActivity extends Activity {
                         @Override
                         public void onScopeRequestApproved(java.util.List<String> approved) {
                             ui.post(() -> {
-                                Config.uiSet(MainActivity.this, g.key, true);
+                                setPref(g.key, true);
                                 setGroupUi(g, true);
                             });
                         }
@@ -552,12 +614,12 @@ public class MainActivity extends Activity {
 
         final Switch sw = new Switch(this);
         groupSwitches.put(g.pkg, sw);
-        sw.setChecked(Config.ui(this).getBoolean(g.key, true));
+        sw.setChecked(prefs().getBoolean(g.key, true));
         sw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton v, boolean checked) {
                 if (updatingSwitch) return;
-                boolean current = Config.ui(MainActivity.this).getBoolean(g.key, true);
+                boolean current = prefs().getBoolean(g.key, true);
                 if (checked == current) return;
                 // 先回滚，等 LSPosed 确认后再改
                 updatingSwitch = true;
@@ -617,12 +679,12 @@ public class MainActivity extends Activity {
         row.addView(texts);
 
         Switch sw = new Switch(this);
-        sw.setChecked(Config.ui(this).getBoolean(key, def));
+        sw.setChecked(prefs().getBoolean(key, def));
         sw.setEnabled(enabled);
         sw.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton v, boolean checked) {
-                Config.uiSet(MainActivity.this, key, checked);
+                setPref(key, checked);
                 if (checked && group != null) ensureInScope(group);
             }
         });
