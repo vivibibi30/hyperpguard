@@ -70,6 +70,12 @@ Network and method layers are independent: when obfuscated class names change, d
 | Xiaomi Trust Service | `com.xiaomi.trustservice` |
 | Translation | `com.xiaomi.aiasst.vision` |
 | Ads (MSA) | `com.miui.systemAdSolution` |
+| Network manager | `com.miui.wmsvc` |
+| AI content recognition | `com.xiaomi.aicr` |
+| Sogou IME | `com.sohu.inputmethod.sogou.xiaomi` |
+| Mi IME | `com.xiaomi.type` |
+| Baidu IME | `com.baidu.input_mi` |
+| iFlytek IME | `com.iflytek.inputmethod.miui` |
 
 ## Logs
 

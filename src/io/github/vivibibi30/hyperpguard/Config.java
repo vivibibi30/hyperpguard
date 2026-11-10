@@ -48,6 +48,12 @@ public final class Config {
     public static final String K_G_AD_MARKET = "g_ad_market";
     public static final String K_G_AD_XMSF = "g_ad_xmsf";
     public static final String K_G_MSA = "g_msa";
+    public static final String K_G_WM = "g_wmsvc";
+    public static final String K_G_AICR = "g_aicr";
+    public static final String K_G_IME_SOGOU = "g_ime_sogou";
+    public static final String K_G_IME_MITYPE = "g_ime_mitype";
+    public static final String K_G_IME_BAIDU = "g_ime_baidu";
+    public static final String K_G_IME_IFLYTEK = "g_ime_iflytek";
 
     /* SystemHelper */
     public static final String K_SYSHELPER = "block_syshelper";
@@ -71,6 +77,37 @@ public final class Config {
     public static final String K_MSA_USAGE = "block_msa_usage";
     /** 广告埋点：OneTrack 的 track / adTrack 方法 */
     public static final String K_MSA_TRACK = "block_msa_track";
+    /** 开屏广告：requestSplashScreen 系列返回空 Intent */
+    public static final String K_MSA_SPLASH = "block_msa_splash";
+
+    /* 网络管理服务（com.miui.wmsvc） */
+    /** OneTrack 诊断埋点 + tracking.miui.com */
+    public static final String K_WM_TRACK = "block_wmsvc_track";
+
+    /* AI 内容识别（com.xiaomi.aicr） */
+    /** OneTrack 埋点 + tracking.miui.com */
+    public static final String K_AICR_TRACK = "block_aicr_track";
+
+    /* 搜狗输入法小米版 */
+    /** 统计上报：kpi2 / instantpb 两个域名 */
+    public static final String K_SOGOU_PINGBACK = "block_sogou_pingback";
+    /** 剪贴板采集：ClipboardLogHelper */
+    public static final String K_SOGOU_CLIPBOARD = "block_sogou_clipboard";
+
+    /* 小米输入法 */
+    /** OneTrack 埋点（自研击键统计无稳定域名，不在此列） */
+    public static final String K_MITYPE_TRACK = "block_mitype_track";
+
+    /* 百度输入法小米版 */
+    /** com.baidu.stats 统计 SDK */
+    public static final String K_BAIDU_STATS = "block_baidu_stats";
+    /** 语音识别 ASR 采集与上传 */
+    public static final String K_BAIDU_SPEECH = "block_baidu_speech";
+
+    /* 讯飞输入法小米版 */
+    /** com.iflytek.statssdk 统计 SDK */
+    public static final String K_IFLYTEK_STATS = "block_iflytek_stats";
+
 
     /* 翻译组件 */
     public static final String K_AIASST = "block_aiasst";

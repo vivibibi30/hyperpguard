@@ -7,6 +7,14 @@
 | 应用 | 规则 | 依据 |
 |---|---|---|
 | MSA | `com.miui.systemAdSolution` 方法层 | 广告使用画像按「今天已打开 = true / 最后使用 = -1」返回；OneTrack 的 `track*` / `adTrack*` 返回空。类名跨版本会漂移，按修饰符 + 参数 + 返回类型 + 包名组合判定 |
+| MSA | `requestSplashScreen` 系列 | 开屏广告：类名前缀 `com.miui.app.splashad.` / `com.miui.systemAdSolution.splashscreen.`，方法名以 `requestSplashScreen` 开头、返回 `Intent`、两个参数。返回空表示「没有可展示的广告」，系统按无广告分支进入应用，应用自身启动页不受影响。实测 2026.08 版本命中 2 个方法 |
+| wmsvc | OneTrack 方法层 + `tracking.*.miui.com` `sdkconfig.*.xiaomi.com` | 网络管理服务的诊断埋点。327 个类的小 dex 里内嵌 OneTrack 2.0.9，`track*` / `adTrack*` 返回空；只停埋点，不影响网络设置与信号 |
+| aicr | OneTrack 方法层 + 同上域名 | AI 内容识别组件内嵌 OneTrack；本地识别与模型推理不经过埋点 |
+| 搜狗输入法 | `kpi2.android.shouji.sogou.com` `instantpb.android.shouji.sogou.com` | 搜狗自有统计链路，两个域名都来自 dex 常量；与 OneTrack 无关，只影响埋点 |
+| 搜狗输入法 | `com.sohu.inputmethod.clipboard.ClipboardLogHelper` 的 static void 方法 | 剪贴板内容与长度的记录／回传入口，类名是保留下来的语义名；输入、候选与词库不经过该类 |
+| 小米输入法 | OneTrack 方法层 + 同上域名 | 内嵌 OneTrack；自研击键统计（`duration_s` / `key_cnt` / `action_list`）类名混淆且无稳定域名，未覆盖 |
+| 百度输入法 | `com.baidu.stats.*`、`com.baidu.speech.utils.analysis.*` 的 void 方法 | 百度统计 SDK 的记录与上传入口，以及语音识别的 ASR 采集上传；只停埋点，语音输入本身不受影响 |
+| 讯飞输入法 | `com.iflytek.statssdk.*` 的 void 方法 | 讯飞统计 SDK 的记录与上传入口 |
 | SystemHelper | `dm.wo.com.cn` | 唯一已知上报地址 `http://dm.wo.com.cn:18080/register`（明文 HTTP、应用层加密封装），硬编码在 `c.d.a.b.d` 常量中；组件为运营商设备管理 / 网络优化用途，非恶意软件 |
 | guardprovider | `flash.sec.miui.com` | 应用特征上传接口 |
 | guardprovider | `detection-aigc.engine.miui.com` | AI 通话预警云检测 |

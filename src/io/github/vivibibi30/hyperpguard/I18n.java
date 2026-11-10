@@ -276,6 +276,36 @@ final class I18n {
         EN.put("广告埋点上报", "Ad event tracking");
         EN.put("OneTrack 的 track / adTrack 方法直接返回空",
                 "OneTrack track / adTrack methods return immediately");
+        EN.put("开屏广告", "Splash ads");
+        EN.put("requestSplashScreen 系列返回空 Intent；应用自己的启动页不受影响",
+                "requestSplashScreen returns a null Intent; the app's own launch screen is untouched");
+        EN.put("网络管理服务", "Network manager");
+        EN.put("诊断统计上报", "Diagnostics upload");
+        EN.put("OneTrack 埋点 + tracking.miui.com；只影响统计，不影响网络设置与信号",
+                "OneTrack + tracking.miui.com; statistics only, network settings unaffected");
+        EN.put("AI 内容识别", "AI content recognition");
+        EN.put("统计埋点", "Event tracking");
+        EN.put("OneTrack 埋点 + tracking.miui.com；不影响本地识别与模型推理",
+                "OneTrack + tracking.miui.com; local recognition and inference stay intact");
+        EN.put("搜狗输入法", "Sogou IME");
+        EN.put("统计上报", "Usage stats");
+        EN.put("kpi2 / instantpb 两个埋点域名；只影响统计",
+                "kpi2 / instantpb endpoints; statistics only");
+        EN.put("剪贴板采集", "Clipboard collection");
+        EN.put("ClipboardLogHelper 记录剪贴板内容与长度；输入与候选不受影响",
+                "ClipboardLogHelper records clipboard text and length; typing and candidates unaffected");
+        EN.put("小米输入法", "Mi IME");
+        EN.put("OneTrack 埋点 + tracking.miui.com；击键统计没有稳定域名，暂未覆盖",
+                "OneTrack + tracking.miui.com; keystroke stats have no stable host and are not covered yet");
+        EN.put("百度输入法", "Baidu IME");
+        EN.put("com.baidu.stats 记录与上传入口；只影响统计",
+                "com.baidu.stats record and upload entries; statistics only");
+        EN.put("语音采集上传", "Voice data upload");
+        EN.put("com.baidu.speech.utils.analysis；关闭后语音输入仍可用，只是不再上传 ASR 数据",
+                "com.baidu.speech.utils.analysis; voice input still works, ASR data is no longer uploaded");
+        EN.put("讯飞输入法", "iFlytek IME");
+        EN.put("com.iflytek.statssdk 记录与上传入口；只影响统计",
+                "com.iflytek.statssdk record and upload entries; statistics only");
         EN.put("删除", "Delete");
         EN.put("还没有规则", "No rules yet");
         EN.put("添加或删除后需要重启对应应用才生效", "Restart the target app after adding or removing a rule");

@@ -1,6 +1,7 @@
 package io.github.vivibibi30.hyperpguard;
 
 import android.content.Context;
+import android.content.Intent;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -60,25 +61,31 @@ final class MsaHooks {
     }
 
     void installTrack(ClassLoader cl) {
-        int n = 0;
-        try {
-            Class<?> c = Class.forName("com.xiaomi.onetrack.OneTrack", false, cl);
-            for (Method method : c.getDeclaredMethods()) {
-                String name = method.getName();
-                if (!name.startsWith("track") && !name.startsWith("adTrack")) continue;
-                if (method.getReturnType() != void.class) continue;
-                if (Modifier.isAbstract(method.getModifiers())) continue;
-                try {
-                    m.hook(method).intercept(chain -> null);
-                    n++;
-                } catch (Throwable ignored) {
-                }
-            }
-        } catch (Throwable t) {
-            Logs.i("msa track miss: " + t);
-        }
-        Logs.i("msa track hooked=" + n);
+        TrackHooks.install(m, cl);
     }
+
+    /**
+     * 开屏广告。
+     *
+     * requestSplashScreen 系列返回的是「要展示的广告 Intent」，置空等于没有可展示的广告，
+     * 系统侧按无广告分支直接进应用，不会留白，也不影响应用本身的启动页。
+     *
+     * 判据：类名前缀 com.miui.app.splashad. 或 com.miui.systemAdSolution.splashscreen.，
+     * 方法名以 requestSplashScreen 开头、返回 Intent、两个参数。方法名在这几个版本里稳定，
+     * 类名是语义名（不是混淆名）。
+     */
+    void installSplash(ClassLoader cl) {
+        java.util.List<String> cands = Hooks.classNames(cl, s ->
+                s.startsWith("com.miui.app.splashad.")
+                        || s.startsWith("com.miui.systemAdSolution.splashscreen."), 200);
+        int n = Hooks.hookBySignature(m, cands, cl,
+                method -> method.getReturnType() == Intent.class
+                        && method.getName().startsWith("requestSplashScreen")
+                        && method.getParameterCount() == 2,
+                chain -> null);
+        Logs.i("msa splash classes=" + cands.size() + " hooked=" + n);
+    }
+
 
     /** 只扫可能承载这几个方法的包，避免整进程全量反射 */
     private static boolean usageCandidate(String name) {
