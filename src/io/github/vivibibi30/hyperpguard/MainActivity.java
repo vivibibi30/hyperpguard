@@ -239,6 +239,17 @@ public class MainActivity extends Activity {
     private int bindRetry = 0;
     private boolean autoRequested = false;
 
+    /* ---------------- 开关热生效 ---------------- */
+
+    /** 待热重载的目标包；hotReloadAll 为 true 时对作用域内全部进程 */
+    private final java.util.Set<String> hotReloadPkgs = new java.util.LinkedHashSet<>();
+    private boolean hotReloadAll = false;
+    private boolean hotReloadRunning = false;
+    private boolean hotReloadQueued = false;
+    /** 框架不支持热重载时只提示一次，别每点一个开关弹一遍 */
+    private boolean hotReloadHinted = false;
+    private final Runnable hotReloadTask = this::flushHotReload;
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -1204,6 +1215,7 @@ public class MainActivity extends Activity {
         bulk.addView(bulkButton("全部启用", this::requestAll));
         bulk.addView(bulkButton("全部停用", this::removeAll));
         bulk.addView(bulkButton("全部重启", this::restartAll));
+        bulk.addView(bulkButton("热重载", () -> hotReload(null)));
         root.addView(bulk);
         for (final Group g : GROUPS) {
             LinearLayout c = card();
@@ -2073,6 +2085,7 @@ public class MainActivity extends Activity {
             public void onCheckedChanged(CompoundButton v, boolean checked) {
                 Config.uiSet(MainActivity.this, key, checked);
                 if (checked && group != null) ensureInScope(group);
+                scheduleHotReload(group == null ? null : group.pkg);
             }
         });
         row.addView(sw);
@@ -2196,6 +2209,7 @@ public class MainActivity extends Activity {
                     sb.append(t);
                 }
                 Config.setCustomRules(MainActivity.this, sb.toString());
+                scheduleHotReload(null);
                 renderRules(ruleList);
             });
             row.addView(del);
@@ -2253,6 +2267,7 @@ public class MainActivity extends Activity {
                 }
             }
             Config.setCustomRules(this, raw.isEmpty() ? val : raw + ";;" + val);
+            scheduleHotReload(null);
             input.setText("");
             renderRules(ruleList);
         });
@@ -2269,6 +2284,7 @@ public class MainActivity extends Activity {
         clear.setPadding(0, dp(10), 0, dp(10));
         clear.setOnClickListener(v -> {
             Config.setCustomRules(this, "");
+            scheduleHotReload(null);
             renderRules(ruleList);
         });
         actions.addView(clear, new LinearLayout.LayoutParams(
@@ -2800,6 +2816,83 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    /* ---------------- 开关热生效 ---------------- */
+
+    /**
+     * 开关改动后安排一次热重载。
+     *
+     * pkg 为空表示这次改动影响所有组件（总开关、路径特征、未命中记录、自定义规则），
+     * 否则只重载该组件自己的进程——改一个开关不该让十几个进程一起重扫。
+     * 作用域变化不走这里：新加入的作用域要等进程重新启动才会注入。
+     */
+    private void scheduleHotReload(String pkg) {
+        if (pkg == null || pkg.isEmpty()) hotReloadAll = true;
+        else hotReloadPkgs.add(pkg);
+        ui.removeCallbacks(hotReloadTask);
+        ui.postDelayed(hotReloadTask, 600);
+    }
+
+    private void flushHotReload() {
+        final List<String> pkgs = hotReloadAll ? null : new ArrayList<>(hotReloadPkgs);
+        hotReloadAll = false;
+        hotReloadPkgs.clear();
+        hotReload(pkgs);
+    }
+
+    /** 让已注入的进程换用新配置，不 force-stop；pkgs 为 null 时是作用域内全部 */
+    private void hotReload(final List<String> pkgs) {
+        if (xposed == null) return;   // 服务没连上：保持原流程，界面仍提示用「重启」
+        if (hotReloadRunning) {       // 上一轮还没回完，合并到它之后
+            hotReloadQueued = true;
+            if (pkgs == null) hotReloadAll = true;
+            else hotReloadPkgs.addAll(pkgs);
+            return;
+        }
+        final HotReload.Callback callback = (done, failed, unsupported, message) -> {
+            hotReloadRunning = false;
+            if (hotReloadQueued) {
+                hotReloadQueued = false;
+                flushHotReload();
+            }
+            reportHotReload(done, failed, unsupported, message);
+        };
+        hotReloadRunning = true;
+        int n = 0;
+        try {
+            n = new HotReload(xposed, pkgs, callback).start();
+        } catch (Throwable t) {
+            // 服务在发起前断开：别让点击事件把界面带崩，保持「重启」可用
+            Logs.i("hot reload start fail: " + t);
+            hotReloadRunning = false;
+            return;
+        }
+        if (n == 0) {
+            hotReloadRunning = false;
+            // 没有在运行的进程：下次启动本来就会读到新配置，不打扰
+            Logs.i("hot reload skipped: no running target"
+                    + (pkgs == null ? "" : " " + pkgs));
+        }
+    }
+
+    private void reportHotReload(int done, int failed, boolean unsupported, String message) {
+        if (done == 0 && failed == 0) return;
+        String msg;
+        if (unsupported) {
+            if (hotReloadHinted) return;
+            hotReloadHinted = true;
+            msg = "当前框架不支持热重载，请用「重启」或「全部重启」";
+        } else if (failed == 0) {
+            msg = "已热重载 " + done + " 个进程，开关立即生效";
+        } else if (done == 0) {
+            msg = "热重载失败（" + failed + " 个进程），请用「重启」"
+                    + (message == null ? "" : "：" + message);
+        } else {
+            msg = "已热重载 " + done + " 个进程，" + failed + " 个失败，可用「重启」重试"
+                    + (message == null ? "" : "：" + message);
+        }
+        Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+    }
+
     /* ---------------- 日志 ---------------- */
 
     private void loadLog(final boolean share) {
@@ -2837,8 +2930,8 @@ public class MainActivity extends Activity {
     }
 
     private void showLog(final String log) {
-        String body = "改动任一开关后，需要点该组右上角「重启」或「全部重启」，"
-                + "目标应用重新加载规则才会生效。\n\n" + classify(log);
+        String body = "改动开关后会自动热重载已注入的进程；提示热重载失败时，"
+                + "再点该组右上角「重启」或批量行的「全部重启」。\n\n" + classify(log);
         showText("模块日志（" + log.split("\n").length + " 行）", body);
     }
 

@@ -41,8 +41,22 @@ public class HookEntry extends XposedModule {
     public boolean onHotReloading(XposedModuleInterface.HotReloadingParam param) {
         Thread t = fallbackThread;
         if (t != null) t.interrupt();
-        Logs.i("hot reloading");
+        Logs.i("hot reloading" + reason(param == null ? null : param.getExtras()));
         return true;
+    }
+
+    /**
+     * 热重载来源：界面改开关后主动发起的那次带 reason=config，
+     * 模块更新时框架发起的不带，日志里分开便于排查。
+     */
+    private static String reason(android.os.Bundle extras) {
+        if (extras == null) return "";
+        try {
+            String r = extras.getString(HotReload.EXTRA_REASON);
+            return r == null || r.isEmpty() ? "" : " (" + r + ")";
+        } catch (Throwable t) {
+            return "";
+        }
     }
 
     /**
@@ -66,10 +80,11 @@ public class HookEntry extends XposedModule {
             return;
         }
         String pkg = app.getPackageName();
-        Config.load(app.getApplicationContext());
+        // 界面改开关后走的就是这条：清缓存重读，再按新开关重装 hook
+        Config.reload(app.getApplicationContext());
         dispatched.set(false);
         dispatchOnce(pkg, app.getClassLoader());
-        Logs.i("hot reloaded: " + pkg);
+        Logs.i("hot reloaded: " + pkg + reason(param.getExtras()));
     }
 
     @Override

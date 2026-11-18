@@ -566,6 +566,19 @@ public final class Config {
                 : "config loaded: " + REMOTE.size());
     }
 
+    /**
+     * 热重载后强制重读：先清掉进程内缓存，再按当前配置读一遍。
+     *
+     * load() 是「没有就补」的语义，热重载时如果框架复用了同一个类加载器，
+     * 缓存还在就会一直用旧开关，所以这里显式清空。
+     */
+    public static void reload(android.content.Context ctx) {
+        REMOTE.clear();
+        CUSTOM = "";
+        invalidateCache();
+        load(ctx);
+    }
+
     private static void loadFromSettings(android.content.Context ctx) {
         try {
             String v = android.provider.Settings.Global.getString(

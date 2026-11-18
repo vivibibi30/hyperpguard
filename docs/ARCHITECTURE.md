@@ -62,7 +62,23 @@ MainActivity.java  设置界面（程序化构建，无 layout 资源）
 - 开关用 `PgSwitch`；需要「等外部确认再切换」时用 `setOnToggleRequest()`，自身不翻转
 - 行规格：标题 17sp、副标题 14sp、行高 56dp、卡片圆角 20dp、分组标题 14sp/35dp
 
-## 六、构建与发布
+## 六、开关热生效
+
+改开关后不必重启目标进程：界面把新配置写进 `Settings.Global` 的 `hyperpguard_conf`，随后调用
+`IXposedService#hotReloadModule` 让已注入的进程重装 hook。
+
+```
+MainActivity.scheduleHotReload(pkg)   // 连点合并成一次，600ms 后触发
+  → HotReload.start()                 // 按包名挑运行中目标，逐个 hotReloadModule
+  → HookEntry.onHotReloaded()         // 卸载旧 hook → Config.reload() → 按新开关重装
+```
+
+- 只重载受影响的进程：改某个组件的子项只重载该组件，总开关 / 路径特征 / 未命中记录 / 自定义规则才重载全部
+- 作用域变化不走热重载：新加入的作用域要等进程重新启动才会注入，界面仍保留「重启」「全部重启」
+- `HotReloadResult` 是 record（Java 16+），本模块按 `--release 11` 编译，结果按访问器名反射读取
+- 框架不支持（API < 102）或进程正在退出时，界面提示一次后由用户改用「重启」
+
+## 七、构建与发布
 
 ```sh
 sh build.sh          # javac --release 11 → d8 → aapt2 link → zipalign → apksigner
