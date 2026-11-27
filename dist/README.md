@@ -1,14 +1,16 @@
-<div align="center">
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vivibibi30/hyperpguard/main/res/mipmap-xxxhdpi/ic_launcher.png" width="132" height="132" alt="HyperPGuard">
+</p>
 
-# HyperPGuard
+<h1 align="center">HyperPGuard</h1>
 
-![license](https://img.shields.io/badge/license-GPL--3.0-blue)
-![language](https://img.shields.io/badge/language-Java-orange)
-![release](https://img.shields.io/github/v/release/vivibibi30/hyperpguard?label=release&color=green)
-
-在采集入口、本地存储、对外接口、网络出口四层，按应用给行为加开关（LSPosed）
-
-</div>
+<p align="center">
+  <a href="https://github.com/vivibibi30/hyperpguard/releases"><img src="https://img.shields.io/github/v/release/vivibibi30/hyperpguard?label=release&style=for-the-badge&logo=github&logoColor=white&labelColor=222" alt="release"></a>
+  <img src="https://img.shields.io/badge/Android-10--16-3DDC84?style=for-the-badge&logo=android&logoColor=white&labelColor=222" alt="android">
+  <img src="https://img.shields.io/badge/language-Java-ED8B00?style=for-the-badge&labelColor=222" alt="language">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-white?style=for-the-badge&logo=gnu&logoColor=white&labelColor=222" alt="license"></a>
+  <img src="https://img.shields.io/badge/status-按需维护-2da44e?style=for-the-badge&labelColor=222" alt="status">
+</p>
 
 > 源码、构建说明与完整文档：[vivibibi30/hyperpguard](https://github.com/vivibibi30/hyperpguard)
 >
