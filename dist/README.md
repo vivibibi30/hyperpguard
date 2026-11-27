@@ -8,7 +8,7 @@
   <a href="https://github.com/vivibibi30/hyperpguard/releases"><img src="https://img.shields.io/github/v/release/vivibibi30/hyperpguard?label=release&style=for-the-badge&logo=github&logoColor=white&labelColor=222" alt="release"></a>
   <img src="https://img.shields.io/badge/Android-10--16-3DDC84?style=for-the-badge&logo=android&logoColor=white&labelColor=222" alt="android">
   <img src="https://img.shields.io/badge/language-Java-ED8B00?style=for-the-badge&labelColor=222" alt="language">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-white?style=for-the-badge&logo=gnu&logoColor=white&labelColor=222" alt="license"></a>
+  <a href="https://github.com/vivibibi30/hyperpguard/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-white?style=for-the-badge&logo=gnu&logoColor=white&labelColor=222" alt="license"></a>
   <img src="https://img.shields.io/badge/status-按需维护-2da44e?style=for-the-badge&labelColor=222" alt="status">
 </p>
 
